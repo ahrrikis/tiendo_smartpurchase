@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from odoo import models, fields, api
+from odoo import models, fields, api, _
 
 # class tiendo_smartpurchase(models.Model):
 #     _name = 'tiendo_smartpurchase.tiendo_smartpurchase'
@@ -23,7 +23,7 @@ class ProcurementOrder(models.Model):
         Correction of make_po method, to avoid price selection of unavailable prices.
         :return: Array of created Purchase Orders.
         """
-        self._before_make_po(self)
+        self._before_make_po()
         cache = {}
         res = []
         for procurement in self:
@@ -103,7 +103,7 @@ class ProcurementOrder(models.Model):
         #not r.product_id or r.product_id == procurement.product_id))
         suppliers = procurement.product_id.seller_ids \
             .filtered(lambda r: (not r.company_id or r.company_id == procurement.company_id) and (
-            not r.product_id or r.product_id == procurement.product_id) and (r.min_qty < procurement.product_qty))
+            not r.product_id or r.product_id == procurement.product_id) and (r.min_qty <= procurement.product_qty))
         return suppliers
 
     def _make_po_select_supplier(self, suppliers):

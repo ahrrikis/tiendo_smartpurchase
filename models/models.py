@@ -23,12 +23,12 @@ class ProcurementOrder(models.Model):
         Correction of make_po method, to avoid price selection of unavailable prices.
         :return: Array of created Purchase Orders.
         """
+        self._before_make_po(self)
         cache = {}
         res = []
         for procurement in self:
             #product_qty
-            suppliers = procurement.product_id.seller_ids\
-                .filtered(lambda r: (not r.company_id or r.company_id == procurement.company_id) and (not r.product_id or r.product_id == procurement.product_id) and (r.min_qty < procurement.product_qty))
+            suppliers = self._get_supplier(procurement)
             if not suppliers:
                 procurement.message_post(body=_('No vendor associated to product %s. Please set one to fix this procurement.') % (procurement.product_id.name))
                 continue
@@ -91,6 +91,21 @@ class ProcurementOrder(models.Model):
                 self.env['purchase.order.line'].create(vals)
         return res
 
+    def _get_supplier(self, procurement):
+        """
+        Selects the available suppliers from Product.Supplierinfo
+        :param procurement: Procurement available supplier shall be given for.
+        :return: collection of available suppliers for given procurement
+        """
+        # Original behavior doesn't take supplier tier price into consideration.
+        # suppliers = procurement.product_id.seller_ids \
+        #    .filtered(lambda r: (not r.company_id or r.company_id == procurement.company_id) and (
+        #not r.product_id or r.product_id == procurement.product_id))
+        suppliers = procurement.product_id.seller_ids \
+            .filtered(lambda r: (not r.company_id or r.company_id == procurement.company_id) and (
+            not r.product_id or r.product_id == procurement.product_id) and (r.min_qty < procurement.product_qty))
+        return suppliers
+
     def _make_po_select_supplier(self, suppliers):
         """ This method selects the cheapest seller that has a valid price. Tier prices cannot considered here, for
         consideration the suppliers input has to be without prices that are not available for quantities purchased
@@ -106,3 +121,6 @@ class ProcurementOrder(models.Model):
             if supplier.price > seller.price:
                 supplier = seller
         return supplier
+
+    def _before_make_po(self):
+        """Empty method for easier extension of make_po method."""
